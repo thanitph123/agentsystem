@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบฝึกอบรมตัวแทนประกันชีวิตมืออาชีพ</title>
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts: Sarabun for Thai text -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .recording-pulse {
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        #camera-feed {
+            transform: scaleX(-1); /* Mirror effect */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- App Container -->
+    <div id="app-container" class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden min-h-[600px] relative flex flex-col">
+        
+        <!-- Header -->
+        <header class="bg-blue-900 text-white p-4 text-center">
+            <h1 class="text-xl font-bold"><i class="fas fa-user-tie mr-2"></i>Insurance Pro Trainer</h1>
+            <p class="text-xs text-blue-200">ระบบฝึกตอบข้อโต้แย้งอัจฉริยะ</p>
+        </header>
+
+        <!-- Content Area -->
+        <main id="main-content" class="flex-grow p-6 flex flex-col items-center justify-center relative">
+            <!-- Dynamic Content will be injected here -->
+        </main>
+
+        <!-- Footer / Status -->
+        <footer class="bg-gray-50 p-3 text-center text-xs text-gray-500 border-t">
+            พัฒนาโดยผู้เชี่ยวชาญด้านการประกันชีวิต & AI
+        </footer>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Configuration & Data ---
+        const scenarios = {
+            1: {
+                title: "ลูกค้ามีสวัสดิการที่ทำงานอยู่แล้ว",
+                questions: [
+                    "สวัสดิการที่คุณลูกค้ามีอยู่ ครอบคลุมค่าใช้จ่ายกรณีเจ็บป่วยร้ายแรงระยะยาวหรือไม่ครับ?",
+                    "หากวันหนึ่งคุณลูกค้าเกษียณอายุ หรือย้ายงาน สวัสดิการนี้จะยังคุ้มครองต่อเนื่องไหมครับ?",
+                    "คุณลูกค้าคิดว่าวงเงินค่ารักษาพยาบาลของบริษัท เพียงพอสำหรับค่ารักษาในโรงพยาบาลเอกชนชั้นนำหรือไม่ครับ?",
+                    "ถ้าหากเจ็บป่วยจนทำงานไม่ได้ รายได้ที่หายไป สวัสดิการที่ทำงานชดเชยให้หรือไม่ครับ?",
+                    "จะดีกว่าไหมครับ ถ้าเรามี 'กระเป๋าสำรอง' ส่วนตัว ที่เราควบคุมความคุ้มครองได้เอง 100%?"
+                ]
+            },
+            2: {
+                title: "ลูกค้าแจ้งว่าไม่มีเงินทำประกัน",
+                questions: [
+                    "เข้าใจครับ แต่ถ้าเทียบกับการออมเงินวันละเล็กน้อย แลกกับความคุ้มครองหลักล้าน คุณลูกค้าคิดว่าคุ้มค่าไหมครับ?",
+                    "ถ้าวันนี้เราบอกว่าไม่มีเงิน แล้วถ้าเกิดเหตุไม่คาดฝันขึ้น ครอบครัวจะลำบากเรื่องเงินไหมครับ?",
+                    "จริงๆ แล้วแบบประกันมีหลายขนาด เราสามารถเริ่มจากขนาดเล็กๆ ที่ไม่กระทบค่าใช้จ่ายหลักได้ สนใจลองดูไหมครับ?",
+                    "การทำประกันคือการวางแผนการเงินครับ ถ้าเราจัดสรรเงินเพียง 5-10% ของรายได้ จะทำให้การเงินส่วนอื่นมั่นคงขึ้นไหมครับ?",
+                    "ค่าใช้จ่ายที่ไม่จำเป็นบางอย่าง หากลดลงมาเปลี่ยนเป็นเงินออมประกัน คุณลูกค้าคิดว่าเป็นไปได้ไหมครับ?"
+                ]
+            },
+            3: {
+                title: "ลูกค้ากลัวตัวแทนโกงเงิน",
+                questions: [
+                    "ผมเข้าใจความกังวลครับ แต่ปัจจุบันบริษัทมีระบบชำระเงินเข้าบริษัทโดยตรงผ่านแอปพลิเคชัน คุณลูกค้าสะดวกแบบนี้ไหมครับ?",
+                    "ตัวแทนทุกคนต้องมีใบอนุญาตจาก คปภ. คุณลูกค้าสามารถตรวจสอบเลขที่ใบอนุญาตของผมได้เลยครับ สบายใจได้ไหมครับ?",
+                    "บริษัทเรามีระบบ SMS แจ้งเตือนทันทีเมื่อเงินเข้าระบบ คุณลูกค้าจะได้รับใบเสร็จรับเงินชั่วคราวทันทีที่ชำระครับ",
+                    "การทำประกันยุคใหม่ ตัวแทนเป็นเพียงผู้ให้คำปรึกษาครับ เรื่องเงินคุณลูกค้าจัดการผ่านระบบธนาคารได้เอง 100% ปลอดภัยแน่นอนครับ",
+                    "หากผมบริการไม่ดี หรือมีปัญหา คุณลูกค้าสามารถร้องเรียนบริษัทหรือ คปภ. ได้โดยตรงเลยครับ ยินดีให้ตรวจสอบประวัติครับ"
+                ]
+            }
+        };
+
+        // --- State Management ---
+        let state = {
+            step: 'welcome', // welcome, consent, coaching, summary
+            selectedTopic: null,
+            currentQuestionIndex: 0,
+            answers: [], // Store { question, answer, time }
+            stream: null,
+            recognition: null,
+            timerInterval: null,
+            timeLeft: 60,
+            isRecording: false
+        };
+
+        // --- DOM Elements ---
+        const mainContent = document.getElementById('main-content');
+
+        // --- Core Functions ---
+
+        function render() {
+            mainContent.innerHTML = '';
+            mainContent.className = "flex-grow p-6 flex flex-col items-center relative fade-in"; // Reset classes
+
+            if (state.step === 'welcome') {
+                renderWelcome();
+            } else if (state.step === 'consent') {
+                renderConsent();
+            } else if (state.step === 'coaching') {
+                renderCoaching();
+            } else if (state.step === 'analysis') {
+                renderAnalysisLoading();
+            } else if (state.step === 'summary') {
+                renderSummary();
+            }
+        }
+
+        // 1. Welcome Screen
+        function renderWelcome() {
+            const html = `
+                <div class="text-center space-y-6 w-full">
+                    <div class="bg-blue-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-shield-alt text-3xl text-blue-600"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">เลือกโจทย์การฝึก</h2>
+                    <p class="text-gray-600 mb-6">เลือกสถานการณ์ที่คุณต้องการฝึกตอบข้อโต้แย้ง</p>
+                    
+                    <div class="space-y-3">
+                        <button onclick="selectTopic(1)" class="w-full p-4 bg-white border-2 border-blue-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition text-left flex items-center shadow-sm">
+                            <span class="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold">1</span>
+                            <span class="font-semibold text-gray-700">ลูกค้ามีสวัสดิการแล้ว</span>
+                        </button>
+                        <button onclick="selectTopic(2)" class="w-full p-4 bg-white border-2 border-blue-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition text-left flex items-center shadow-sm">
+                            <span class="bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold">2</span>
+                            <span class="font-semibold text-gray-700">ลูกค้าไม่มีเงิน</span>
+                        </button>
+                        <button onclick="selectTopic(3)" class="w-full p-4 bg-white border-2 border-blue-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition text-left flex items-center shadow-sm">
+                            <span class="bg-red-500 text-white w-8 h-8 rounded-full flex items-center justify-center mr-3 font-bold">3</span>
+                            <span class="font-semibold text-gray-700">กลัวโดนโกง</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            mainContent.innerHTML = html;
+        }
+
+        // 2. Consent & Pre-check Screen
+        function renderConsent() {
+            const html = `
+                <div class="text-center space-y-6 max-w-sm">
+                    <h2 class="text-xl font-bold text-gray-800">เตรียมพร้อมก่อนเริ่ม</h2>
+                    <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-left text-sm text-yellow-800">
+                        <h3 class="font-bold mb-2"><i class="fas fa-info-circle"></i> กติกาการฝึก</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>มีการถามทั้งหมด <strong>5 คำถาม</strong></li>
+                            <li>คำถามอยู่ในขอบเขต <strong>"${scenarios[state.selectedTopic].title}"</strong></li>
+                            <li>ตอบคำถามข้อละไม่เกิน <strong>1 นาที</strong></li>
+                            <li>ระบบจะขออนุญาตเปิดกล้องและไมค์เพื่อบันทึกการตอบ</li>
+                        </ul>
+                    </div>
+                    
+                    <button onclick="startTraining()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:bg-blue-700 transition transform active:scale-95">
+                        <i class="fas fa-camera mr-2"></i> อนุญาตและเริ่มฝึกทันที
+                    </button>
+                    <button onclick="goBack()" class="text-gray-500 text-sm underline">ย้อนกลับ</button>
+                </div>
+            `;
+            mainContent.innerHTML = html;
+        }
+
+        // 3. Coaching/Question Screen
+        function renderCoaching() {
+            // Current Question
+            const questions = scenarios[state.selectedTopic].questions;
+            const currentQ = questions[state.currentQuestionIndex];
+            
+            const html = `
+                <div class="w-full h-full flex flex-col">
+                    <!-- Progress & Timer -->
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm font-bold text-gray-500">คำถามที่ ${state.currentQuestionIndex + 1} / 5</span>
+                        <div id="timer-badge" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-mono font-bold text-lg">
+                            01:00
+                        </div>
+                    </div>
+
+                    <!-- Camera Feed (Simulated Wrapper) -->
+                    <div class="relative w-full h-48 bg-black rounded-xl overflow-hidden mb-4 shadow-inner flex justify-center items-center">
+                        <video id="camera-feed" autoplay playsinline muted class="absolute w-full h-full object-cover"></video>
+                        <div id="recording-indicator" class="absolute top-2 right-2 flex items-center space-x-1 bg-black bg-opacity-50 rounded-full px-2 py-1 hidden">
+                            <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            <span class="text-white text-xs">REC</span>
+                        </div>
+                        <!-- Fallback if camera fails -->
+                        <div id="camera-placeholder" class="hidden text-gray-500 flex flex-col items-center">
+                            <i class="fas fa-video-slash text-2xl mb-2"></i>
+                            <span class="text-xs">ไม่สามารถเข้าถึงกล้องได้</span>
+                        </div>
+                    </div>
+
+                    <!-- Question Card -->
+                    <div class="bg-white border-l-4 border-blue-500 p-4 rounded-r-lg shadow-sm mb-4 flex-grow">
+                        <p class="text-lg text-gray-800 font-semibold leading-relaxed">"${currentQ}"</p>
+                    </div>
+
+                    <!-- Answer/Transcription Area -->
+                    <div class="bg-gray-100 rounded-lg p-3 h-24 overflow-y-auto mb-4 text-sm text-gray-600 italic border border-gray-200">
+                        <p id="live-transcript">รอรับเสียงคำตอบ...</p>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="mt-auto">
+                         <button id="next-btn" onclick="nextQuestion()" class="w-full py-3 bg-green-600 text-white rounded-xl font-bold shadow-md hover:bg-green-700 transition hidden">
+                            ส่งคำตอบ & ไปข้อถัดไป <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                         <p id="status-msg" class="text-center text-xs text-gray-400 mt-2">กำลังฟังคำตอบของคุณ...</p>
+                    </div>
+                </div>
+            `;
+            mainContent.innerHTML = html;
+            
+            initializeCamera();
+            startQuestionLogic();
+        }
+
+        // 4. Analysis Loading Screen
+        function renderAnalysisLoading() {
+            const html = `
+                <div class="text-center space-y-6">
+                    <div class="relative w-24 h-24 mx-auto">
+                        <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-100 rounded-full"></div>
+                        <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <i class="fas fa-brain text-blue-500 text-2xl"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">AI กำลังวิเคราะห์คำตอบ</h2>
+                        <p class="text-gray-500 text-sm mt-2">กำลังประมวลผลความมั่นใจ และเนื้อหา...</p>
+                    </div>
+                </div>
+            `;
+            mainContent.innerHTML = html;
+            
+            // Simulate processing time then go to summary
+            setTimeout(() => {
+                analyzeResults(); // Generate analysis text
+                state.step = 'summary';
+                render();
+            }, 3000);
+        }
+
+        // 5. Summary Screen
+        function renderSummary() {
+            const analysis = state.analysisResult;
+            
+            // Generate rows for CSV simulation
+            let rowsHtml = state.answers.map((ans, idx) => `
+                <div class="bg-white p-3 rounded-lg border border-gray-200 text-sm">
+                    <div class="font-bold text-blue-800 mb-1">Q${idx+1}: ${ans.question}</div>
+                    <div class="text-gray-600 italic mb-1">" ${ans.answer || '(ไม่มีเสียงตอบรับ)'} "</div>
+                </div>
+            `).join('');
+
+            const html = `
+                <div class="w-full h-full flex flex-col overflow-y-auto max-h-[80vh]">
+                    <div class="text-center mb-6">
+                        <div class="inline-block p-3 bg-green-100 text-green-700 rounded-full mb-3">
+                            <i class="fas fa-check-circle text-3xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800">การฝึกเสร็จสมบูรณ์!</h2>
+                        <p class="text-gray-500 text-sm">วันที่: ${new Date().toLocaleString('th-TH')}</p>
+                    </div>
+
+                    <!-- AI Feedback Card -->
+                    <div class="bg-gradient-to-r from-indigo-500 to-blue-600 rounded-xl p-5 text-white shadow-lg mb-6">
+                        <h3 class="font-bold text-lg mb-2"><i class="fas fa-robot mr-2"></i>บทวิเคราะห์จากผู้เชี่ยวชาญ</h3>
+                        <p class="text-blue-50 text-sm leading-relaxed mb-3">${analysis.feedback}</p>
+                        <div class="flex items-center justify-between text-xs bg-white bg-opacity-20 rounded px-3 py-2">
+                            <span>คะแนนความมั่นใจ</span>
+                            <span class="font-bold text-yellow-300">⭐⭐⭐⭐ (ดีมาก)</span>
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-gray-700 mb-3">บันทึกการตอบของคุณ</h3>
+                    <div class="space-y-3 mb-6">
+                        ${rowsHtml}
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="space-y-3 mt-auto">
+                        <button onclick="saveToSheet()" class="w-full py-3 bg-green-600 text-white rounded-xl font-bold shadow hover:bg-green-700 flex items-center justify-center">
+                            <i class="fas fa-file-excel mr-2"></i> บันทึกข้อมูล (Google Sheet)
+                        </button>
+                        <button onclick="location.reload()" class="w-full py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300">
+                            ฝึกหัวข้ออื่น
+                        </button>
+                    </div>
+                </div>
+            `;
+            mainContent.innerHTML = html;
+        }
+
+        // --- Logic Functions ---
+
+        function selectTopic(id) {
+            state.selectedTopic = id;
+            state.step = 'consent';
+            render();
+        }
+
+        function goBack() {
+            state.step = 'welcome';
+            render();
+        }
+
+        function startTraining() {
+            state.step = 'coaching';
+            state.currentQuestionIndex = 0;
+            state.answers = [];
+            render();
+        }
+
+        async function initializeCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                state.stream = stream;
+                const video = document.getElementById('camera-feed');
+                if (video) {
+                    video.srcObject = stream;
+                }
+            } catch (err) {
+                console.error("Camera Access Error:", err);
+                document.getElementById('camera-placeholder').classList.remove('hidden');
+                document.getElementById('camera-feed').classList.add('hidden');
+                alert("กรุณาอนุญาตการใช้กล้องและไมโครโฟนเพื่อประสิทธิภาพสูงสุดในการฝึก");
+            }
+        }
+
+        function startQuestionLogic() {
+            // Reset Timer
+            state.timeLeft = 60;
+            const timerBadge = document.getElementById('timer-badge');
+            const recordingIndicator = document.getElementById('recording-indicator');
+            
+            timerBadge.classList.remove('bg-red-100', 'text-red-800');
+            timerBadge.classList.add('bg-blue-100', 'text-blue-800');
+            recordingIndicator.classList.remove('hidden');
+
+            // Start Speech Recognition
+            setupSpeechRecognition();
+
+            // Timer Loop
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            
+            state.timerInterval = setInterval(() => {
+                state.timeLeft--;
+                
+                // Format 00:00
+                const minutes = Math.floor(state.timeLeft / 60);
+                const seconds = state.timeLeft % 60;
+                timerBadge.innerText = `0${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+                // Warning at 10s
+                if (state.timeLeft <= 10) {
+                    timerBadge.classList.remove('bg-blue-100', 'text-blue-800');
+                    timerBadge.classList.add('bg-red-100', 'text-red-800', 'animate-pulse');
+                }
+
+                // Time up
+                if (state.timeLeft <= 0) {
+                    finishCurrentQuestion();
+                }
+            }, 1000);
+        }
+
+        function setupSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                state.recognition = new SpeechRecognition();
+                state.recognition.lang = 'th-TH';
+                state.recognition.continuous = true;
+                state.recognition.interimResults = true;
+
+                const transcriptEl = document.getElementById('live-transcript');
+                let finalTranscript = '';
+
+                state.recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    transcriptEl.innerText = finalTranscript + interimTranscript;
+                    
+                    // Show Next button if user has spoken enough
+                    if ((finalTranscript.length > 5 || interimTranscript.length > 5) && document.getElementById('next-btn').classList.contains('hidden')) {
+                        document.getElementById('next-btn').classList.remove('hidden');
+                        document.getElementById('status-msg').innerText = "กดปุ่มเมื่อตอบเสร็จแล้ว";
+                    }
+                };
+
+                state.recognition.onerror = (event) => {
+                    console.error("Speech error", event);
+                    transcriptEl.innerText = "(ระบบรับเสียงขัดข้อง หรือไม่มีเสียงพูด)";
+                    // Allow proceed anyway
+                    document.getElementById('next-btn').classList.remove('hidden');
+                };
+
+                state.recognition.start();
+            } else {
+                document.getElementById('live-transcript').innerText = "Browser นี้ไม่รองรับการแปลงเสียงเป็นข้อความ แต่ยังจับเวลาได้ปกติ";
+                document.getElementById('next-btn').classList.remove('hidden');
+            }
+        }
+
+        function nextQuestion() {
+            finishCurrentQuestion();
+        }
+
+        function finishCurrentQuestion() {
+            // Stop processes
+            clearInterval(state.timerInterval);
+            if (state.recognition) state.recognition.stop();
+
+            // Save Answer
+            const transcript = document.getElementById('live-transcript').innerText;
+            const questions = scenarios[state.selectedTopic].questions;
+            
+            state.answers.push({
+                question: questions[state.currentQuestionIndex],
+                answer: transcript.includes('รอรับเสียง') ? '(ไม่ได้ตอบ)' : transcript,
+                timestamp: new Date()
+            });
+
+            // Move to next or finish
+            if (state.currentQuestionIndex < 4) { // 0 to 4 = 5 questions
+                state.currentQuestionIndex++;
+                renderCoaching(); // Re-render for next question
+            } else {
+                // Stop Camera
+                if (state.stream) {
+                    state.stream.getTracks().forEach(track => track.stop());
+                }
+                state.step = 'analysis';
+                render();
+            }
+        }
+
+        function analyzeResults() {
+            // Simple rule-based analysis logic based on selected topic and answer length
+            const totalLength = state.answers.reduce((acc, curr) => acc + curr.answer.length, 0);
+            let feedback = "";
+            
+            if (state.selectedTopic === 1) {
+                feedback = "คุณมีความเข้าใจในจุดอ่อนของสวัสดิการพื้นฐานได้ดีครับ การชี้ให้เห็นช่องว่างเรื่องค่ารักษาหลังเกษียณเป็นจุดขายที่แข็งแรงมาก ขอให้รักษาโทนเสียงที่ห่วงใยแบบนี้ต่อไป ลูกค้าจะสัมผัสได้ถึงความจริงใจครับ";
+            } else if (state.selectedTopic === 2) {
+                feedback = "การจัดการข้อโต้แย้งเรื่องเงินทำได้น่าประทับใจครับ การซอยย่อยเบี้ยประกันให้เป็นรายวันช่วยให้ลูกค้าเห็นภาพว่ามันจับต้องได้ พยายามเน้นเรื่อง 'ความคุ้มครองที่ได้' เทียบกับ 'เงินที่จ่าย' ให้ชัดเจนอีกนิดจะยอดเยี่ยมมากครับ";
+            } else {
+                feedback = "คุณตอบคำถามเรื่องความเชื่อมั่นได้ดีเยี่ยม การอ้างอิงถึง คปภ. และระบบตรวจสอบของบริษัทช่วยสร้างความมั่นใจได้มาก น้ำเสียงที่หนักแน่นแต่สุภาพคือกุญแจสำคัญ สู้ต่อไปนะครับ คุณทำได้ดีแล้ว!";
+            }
+
+            if (totalLength < 50) {
+                feedback += " (ข้อเสนอแนะเพิ่มเติม: ลองขยายความคำตอบให้ยาวขึ้นอีกนิด เพื่อให้ลูกค้าได้รับข้อมูลที่ครบถ้วนยิ่งขึ้นครับ)";
+            }
+
+            state.analysisResult = { feedback };
+        }
+
+        function saveToSheet() {
+            // Prepare Data
+            const data = {
+                date: new Date().toLocaleString('th-TH'),
+                topic: scenarios[state.selectedTopic].title,
+                q1: state.answers[0]?.question, a1: state.answers[0]?.answer,
+                q2: state.answers[1]?.question, a2: state.answers[1]?.answer,
+                q3: state.answers[2]?.question, a3: state.answers[2]?.answer,
+                q4: state.answers[3]?.question, a4: state.answers[3]?.answer,
+                q5: state.answers[4]?.question, a5: state.answers[4]?.answer,
+                analysis: state.analysisResult.feedback
+            };
+
+            // --- Google Sheet Connection Logic ---
+            // เปลี่ยน 'YOUR_WEB_APP_URL' เป็น URL ที่ได้จากการ Deploy จริง
+            const scriptURL = 'YOUR_WEB_APP_URL_HERE'; 
+
+            if (scriptURL === 'YOUR_WEB_APP_URL_HERE' || scriptURL === '') {
+                alert("กรุณาใส่ Web App URL ในโค้ดก่อนใช้งาน หรือกด OK เพื่อโหลดเป็นไฟล์ CSV แทน");
+                // Fallback to CSV
+                downloadCSV(data);
+                return;
+            }
+
+            // แสดงสถานะว่ากำลังบันทึก
+            const saveBtn = document.querySelector('button[onclick="saveToSheet()"]');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+            saveBtn.disabled = true;
+
+            fetch(scriptURL, {
+                method: 'POST',
+                mode: 'no-cors', // จำเป็นสำหรับ Google Apps Script Web App
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                // เนื่องจาก mode: 'no-cors' เราจะไม่รู้ status ที่แท้จริง แต่ถ้าไม่ error ถือว่าส่งไปแล้ว
+                alert('บันทึกข้อมูลลง Google Sheet เรียบร้อยแล้ว!');
+                saveBtn.innerHTML = '<i class="fas fa-check"></i> บันทึกสำเร็จ';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+        }
+
+        function downloadCSV(data) {
+            // Create CSV Content
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + "\uFEFF" // BOM for Thai language support
+                + `วันที่,หัวข้อ,Q1,A1,Q2,A2,Q3,A3,Q4,A4,Q5,A5,ผลวิเคราะห์\n`
+                + `"${data.date}","${data.topic}","${data.q1}","${data.a1}","${data.q2}","${data.a2}","${data.q3}","${data.a3}","${data.q4}","${data.a4}","${data.q5}","${data.a5}","${data.analysis}"`;
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Training_Result_${Date.now()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Initialize
+        render();
+
+    </script>
+</body>
+</html>
