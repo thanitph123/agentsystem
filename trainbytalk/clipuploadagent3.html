@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insurance Coach AI (Debug Mode)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .loading-spinner { border-top-color: transparent; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-6">
+
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-700 mb-2">🛡️ Insurance Coach AI (Debug Mode)</h1>
+            <p class="text-gray-600">เวอร์ชันตรวจสอบข้อผิดพลาด</p>
+        </div>
+
+        <div class="bg-red-50 p-4 rounded-lg mb-6 border border-red-200 text-sm text-red-800">
+            <strong>⚠️ คำแนะนำ:</strong> กรุณาเปิดไฟล์นี้ผ่าน Local Server (http://localhost:8000) อย่าเปิดด้วยการ Double Click ไฟล์โดยตรง เพราะ Browser จะบล็อกการทำงาน
+        </div>
+
+        <div class="bg-blue-50 p-6 rounded-lg mb-6 border border-blue-100">
+            <label class="block text-sm font-medium text-gray-700 mb-2">1. Gemini API Key</label>
+            <input type="password" id="apiKeyInput" placeholder="AIzaSy..." class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+        </div>
+
+        <div class="mb-8">
+            <label class="block text-sm font-medium text-gray-700 mb-2">2. อัปโหลดคลิป (แนะนำไฟล์ไม่เกิน 1 นาที)</label>
+            <div class="flex items-center justify-center w-full">
+                <label for="fileInput" class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                        <p class="text-sm text-gray-500"><span class="font-semibold">คลิกเพื่อเลือกไฟล์ MP4</span></p>
+                    </div>
+                    <input id="fileInput" type="file" accept="video/mp4" class="hidden" />
+                </label>
+            </div>
+            <div id="fileNameDisplay" class="text-sm text-gray-600 mt-2 text-center"></div>
+        </div>
+
+        <button id="analyzeBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300">
+            เริ่มวิเคราะห์คลิป
+        </button>
+
+        <div id="statusLog" class="mt-4 text-center text-sm text-gray-500"></div>
+
+        <div id="loading" class="hidden mt-6 text-center">
+            <div class="w-8 h-8 border-4 border-blue-600 border-solid rounded-full animate-spin loading-spinner mx-auto"></div>
+            <p class="mt-2 text-gray-600">AI กำลังทำงาน...</p>
+        </div>
+
+        <div id="resultSection" class="hidden mt-8 border-t pt-6">
+            <h3 class="font-bold text-xl mb-4">ผลลัพธ์การวิเคราะห์:</h3>
+            <div class="bg-gray-100 p-4 rounded whitespace-pre-wrap text-sm font-mono" id="rawOutput"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        const statusLog = document.getElementById('statusLog');
+
+        // Display Filename
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) document.getElementById('fileNameDisplay').innerText = `เลือกไฟล์: ${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+        });
+
+        function log(msg) {
+            console.log(msg);
+            statusLog.innerText = msg;
+        }
+
+        async function fileToGenerativePart(file) {
+            log("⏳ กำลังแปลงไฟล์วิดีโอเป็น Base64... (อาจค้างสักครู่ถ้าไฟล์ใหญ่)");
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve({
+                    inlineData: { data: reader.result.split(',')[1], mimeType: file.type },
+                });
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        analyzeBtn.addEventListener('click', async () => {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            const file = fileInput.files[0];
+
+            if (!apiKey) return alert('❌ กรุณากรอก API Key');
+            if (!file) return alert('❌ กรุณาเลือกไฟล์วิดีโอ');
+            if (file.size > 25 * 1024 * 1024) return alert('⚠️ ไฟล์ใหญ่เกิน 25MB Browser อาจรองรับไม่ไหว แนะนำให้ตัดคลิปให้สั้นลงครับ');
+
+            loading.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+            analyzeBtn.disabled = true;
+            
+            try {
+                log("🚀 กำลังเชื่อมต่อ Gemini API...");
+                const genAI = new GoogleGenerativeAI(apiKey);
+                
+                // ใช้ Model มาตรฐาน
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+                // แปลงไฟล์
+                const videoPart = await fileToGenerativePart(file);
+                log("✅ แปลงไฟล์สำเร็จ! กำลังส่งข้อมูลไปให้ AI...");
+
+                const prompt = `
+                คุณคือโค้ชประกันชีวิต ฟังเสียงในคลิปนี้ แล้วตอบกลับเป็น JSON Format เท่านั้น:
+                {
+                    "transcription": "ข้อความที่พูด",
+                    "analysis": "วิเคราะห์น้ำเสียง",
+                    "feedback": "คำแนะนำ",
+                    "encouragement": "คำชมเชย"
+                }
+                `;
+
+                const result = await model.generateContent([prompt, videoPart]);
+                log("✅ ได้รับข้อมูลตอบกลับแล้ว! กำลังประมวลผล...");
+                
+                const response = await result.response;
+                const text = response.text();
+                
+                loading.classList.add('hidden');
+                resultSection.classList.remove('hidden');
+                document.getElementById('rawOutput').innerText = text;
+                log("🎉 เสร็จสมบูรณ์!");
+
+            } catch (error) {
+                loading.classList.add('hidden');
+                console.error(error);
+                alert(`❌ เกิดข้อผิดพลาด:\n${error.toString()}\n\n(ให้ลองเปิด Console ดูรายละเอียดเพิ่มเติม)`);
+                log("❌ Error: " + error.message);
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
