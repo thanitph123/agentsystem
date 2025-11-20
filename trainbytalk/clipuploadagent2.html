@@ -1,0 +1,126 @@
+<script type="module">
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        let analysisResult = null;
+
+        // Show filename when selected
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) document.getElementById('fileNameDisplay').innerText = `ไฟล์ที่เลือก: ${file.name}`;
+        });
+
+        // Helper: Convert File to Base64
+        async function fileToGenerativePart(file) {
+            const base64EncodedDataPromise = new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+            return {
+                inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+            };
+        }
+
+        // Main Analysis Function
+        analyzeBtn.addEventListener('click', async () => {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            const file = fileInput.files[0];
+
+            if (!apiKey) return alert('กรุณากรอก API Key');
+            if (!file) return alert('กรุณาเลือกไฟล์วิดีโอ');
+
+            loading.classList.remove('hidden');
+            resultSection.classList.add('hidden');
+            analyzeBtn.disabled = true;
+            analyzeBtn.classList.add('opacity-50');
+
+            try {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                
+                // --- แก้ไขตรงนี้: เปลี่ยนชื่อโมเดลเป็นเวอร์ชันล่าสุด ---
+                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }); 
+                // --------------------------------------------------
+
+                const prompt = `
+                คุณคือ "ผู้เชี่ยวชาญด้านการฝึกอบรมตัวแทนประกันชีวิตระดับมืออาชีพ"
+                วิเคราะห์คลิปวิดีโอที่แนบมานี้ ซึ่งเป็นเหตุการณ์ที่ตัวแทนประกันชีวิตตอบข้อโต้แย้งลูกค้า
+                
+                สิ่งที่คุณต้องทำและส่งคืนในรูปแบบ JSON เท่านั้น (ไม่มี Markdown):
+                1. "transcription": ถอดเสียงคำพูดของตัวแทนเป็นข้อความภาษาไทย
+                2. "analysis": วิเคราะห์น้ำเสียง (Tone), ความชัดเจน (Clarity), ความมั่นใจ (Confidence)
+                3. "feedback": คำแนะนำแนวทางที่ถูกต้องในการตอบเพื่อเปลี่ยนใจลูกค้า
+                4. "encouragement": ให้กำลังใจตัวแทนอย่างสุภาพ
+
+                Format Output (Raw JSON):
+                {
+                    "transcription": "...",
+                    "analysis": "...",
+                    "feedback": "...",
+                    "encouragement": "..."
+                }
+                `;
+
+                const videoPart = await fileToGenerativePart(file);
+                
+                const result = await model.generateContent([prompt, videoPart]);
+                const response = await result.response;
+                const text = response.text();
+                
+                // Clean Code blocks if any
+                const cleanJson = text.replace(/```json|```/g, '').trim();
+                analysisResult = JSON.parse(cleanJson);
+
+                // Render Results
+                document.getElementById('resTranscript').innerText = analysisResult.transcription;
+                document.getElementById('resAnalysis').innerText = analysisResult.analysis;
+                document.getElementById('resFeedback').innerText = analysisResult.feedback;
+                document.getElementById('resEncouragement').innerText = analysisResult.encouragement;
+
+                resultSection.classList.remove('hidden');
+
+            } catch (error) {
+                console.error(error);
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            } finally {
+                loading.classList.add('hidden');
+                analyzeBtn.disabled = false;
+                analyzeBtn.classList.remove('opacity-50');
+            }
+        });
+
+        // CSV Download Function
+        document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+            if (!analysisResult) return;
+
+            const bom = "\uFEFF"; // BOM for Thai Char support in Excel
+            const headers = ["Date", "Transcript", "Analysis", "Feedback", "Encouragement"];
+            const dateStr = new Date().toLocaleString('th-TH');
+            
+            // Escape quotes for CSV
+            const escape = (txt) => `"${txt.replace(/"/g, '""')}"`;
+
+            const row = [
+                escape(dateStr),
+                escape(analysisResult.transcription),
+                escape(analysisResult.analysis),
+                escape(analysisResult.feedback),
+                escape(analysisResult.encouragement)
+            ].join(",");
+
+            const csvContent = bom + headers.join(",") + "\n" + row;
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `insurance_analysis_${new Date().toISOString().slice(0,10)}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
